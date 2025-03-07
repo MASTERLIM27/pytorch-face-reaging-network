@@ -160,3 +160,10 @@ cython_debug/
 #.idea/
 .DS_Store
 
+# Ignore dataset folder
+datasets/aged_synthetic_dataset/
+datasets/data-demo/
+data-demo/
+kaggle.json
+logs/
+models/pretrained_model/

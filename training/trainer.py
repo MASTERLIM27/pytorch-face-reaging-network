@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import pytorch_lightning as pl
 from piq import LPIPS
 import torch.nn as nn
+import cv2 as cv
+import os
+import gc
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -81,42 +84,63 @@ class FRAN(pl.LightningModule):
       self.log('perceptual_loss', perceptual_loss_value.mean()*lambda_perceptual, prog_bar=True)
       self.log('l1_loss', l1_loss_value*lambda_l1, prog_bar=True)
 
-      # Display images every 500 steps
+
+      # Display images every 500 steps     
       if self.my_step % 500 == 0:
 
+        # Define the output directory
+        output_dir = os.path.join(self.logger.log_dir, "output_images")
+        os.makedirs(output_dir, exist_ok=True)
         sample_image = inputs[0]
         model_output = outputs.detach()
 
+        # Convert images to NumPy format for saving
+        input_img = ((normalized_input_image[0].cpu().permute(1, 2, 0).numpy() + 1) * 127.5).astype('uint8')
+        target_img = ((normalized_target_image[0].cpu().permute(1, 2, 0).numpy() + 1) * 127.5).astype('uint8')
+        output_img = (((normalized_input_image[0].cpu() + model_output[0].cpu()).permute(1, 2, 0).numpy() + 1) * 127.5).astype('uint8')
+        tar_diff_img = (((torch.abs(normalized_target_image[0].cpu() - normalized_input_image[0].cpu())).permute(1, 2, 0).numpy() + 1) * 127.5).astype('uint8')
+        pred_diff_img = (((torch.abs(model_output[0].cpu())).permute(1, 2, 0).numpy() + 1) * 127.5).astype('uint8')
+
         plt.figure(figsize=(10, 5))
         plt.subplot(1, 5, 1)
-        plt.imshow(((normalized_input_image[0].cpu().permute(1,2,0).numpy()+1)*127.5).astype('uint'))
+        plt.imshow(input_img)
         plt.title(f"Input Image, Age: {int(sample_image[3][0][0]*100)}")
         plt.axis('off')
 
         plt.subplot(1, 5, 2)
-        plt.imshow(((normalized_target_image[0].cpu().permute(1,2,0).numpy()+1)*127.5).astype('uint'))
+        plt.imshow(target_img)
         plt.title("Target Image")
         plt.axis('off')
 
-        new_image = (((normalized_input_image[0].cpu()+model_output[0].cpu()).permute(1,2,0).numpy()+1)*127.5).astype('uint')
         plt.subplot(1, 5, 3)
-        plt.imshow(new_image)
+        plt.imshow(output_img)
         plt.title(f"Output Image, Age: {int(sample_image[4][0][0]*100)}")
         plt.axis('off')
 
-        new_image = (((torch.abs(normalized_target_image[0].cpu()-normalized_input_image[0].cpu())).permute(1,2,0).numpy()+1)*127.5).astype('uint')
         plt.subplot(1, 5, 4)
-        plt.imshow(new_image)
+        plt.imshow(tar_diff_img)
         plt.title(f"Tar RGB Diff")
         plt.axis('off')
 
-        new_image = (((torch.abs(model_output[0].cpu())).permute(1,2,0).numpy()+1)*127.5).astype('uint')
         plt.subplot(1, 5, 5)
-        plt.imshow(new_image)
+        plt.imshow(pred_diff_img)
         plt.title(f"Pred RGB Diff")
         plt.axis('off')
 
-        plt.show()
+        # Define the output directory
+        output_step_dir = os.path.join(output_dir, f"step_{self.my_step}")
+        os.makedirs(output_step_dir, exist_ok=True)
+
+        # Save individual images
+        plt.imsave(os.path.join(output_step_dir, "input.png"), input_img)
+        plt.imsave(os.path.join(output_step_dir, "target.png"), target_img)
+        plt.imsave(os.path.join(output_step_dir, "output.png"), output_img)
+        plt.imsave(os.path.join(output_step_dir, "target_diff.png"), tar_diff_img)
+        plt.imsave(os.path.join(output_step_dir, "pred_diff.png"), pred_diff_img)
+
+        # Save the full figure
+        plt.savefig(os.path.join(output_step_dir, f"comparison_{self.my_step}.png"), bbox_inches='tight')
+        plt.close()
 
       self.my_step +=1
 
