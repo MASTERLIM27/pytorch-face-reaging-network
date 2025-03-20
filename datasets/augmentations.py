@@ -9,6 +9,6 @@ transform_normalize = A.ReplayCompose([
     A.ColorJitter(p=0.8),
     A.Blur(p=0.1),
     A.RandomBrightnessContrast(),
-    A.Affine(rotate=[-30, 30],scale=(0.5,1.5), p=0.8),
+    # A.Affine(rotate=[-30, 30],scale=(0.5,1.5), p=0.8),
     ToTensorV2(),
 ])

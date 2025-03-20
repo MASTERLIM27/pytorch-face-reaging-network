@@ -15,6 +15,7 @@ import os
 from pytorch_lightning.loggers import TensorBoardLogger, CSVLogger
 
 data_dir = Path('./datasets/aged_synthetic_dataset/')
+# data_dir = Path('./datasets/data-demo/')
 
 def get_args():
     parser = argparse.ArgumentParser(description='Train FRAN model.')
@@ -37,10 +38,10 @@ if __name__ == '__main__':
     fran_trainer = pl.Trainer(
         precision='16-mixed',
         devices=1,
-        max_epochs=20,
+        max_epochs=21,
         logger=[logger, csv_logger],
         callbacks =[pl.callbacks.ModelCheckpoint(
-            every_n_train_steps=500*2,
+            every_n_train_steps=10000,
             dirpath=os.path.join(logger.log_dir, "model_checkpoints"),
             filename='fran-{step:05d}',
             save_last=True,

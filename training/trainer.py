@@ -28,7 +28,6 @@ class FRAN(pl.LightningModule):
     self.generator = generator
     self.discriminator =discriminator
     self.automatic_optimization = False
-    self.my_step =0
 
   def forward(self, x):
       with torch.no_grad():
@@ -41,21 +40,24 @@ class FRAN(pl.LightningModule):
       opt_g.zero_grad()
       opt_d.zero_grad()
 
+      self.clip_gradients(opt_g, gradient_clip_val=1.0)
+      self.clip_gradients(opt_d, gradient_clip_val=1.0)
 
       inputs = batch['input'].to(self.device)
       normalized_input_image = batch['normalized_input_image'].to(self.device)
       normalized_target_image = batch['normalized_target_image'].to(self.device)
 
-
       target_age = batch['target_age'].to(self.device)
       # Forward pass
       outputs = self.generator(inputs)
+      outputs = torch.clamp(outputs, -1, 1)
 
       predicted_images = normalized_input_image+outputs
+      predicted_images = torch.clamp(predicted_images, -1, 1)
       predicted_images_with_age = torch.cat((predicted_images, target_age), dim=1)
 
-      real_labels = torch.ones(inputs.shape[0], 1, 32, 32).to(self.device)
-      fake_labels = torch.zeros(inputs.shape[0], 1, 32, 32).to(self.device)
+      real_labels = torch.full((inputs.shape[0], 1, 32, 32), 0.9, device=self.device)
+      fake_labels = torch.full((inputs.shape[0], 1, 32, 32), 0.1, device=self.device)
 
       # Compute discriminator losses
       real_loss = adversarial_loss(self.discriminator(torch.cat((normalized_target_image, target_age), dim=1)), real_labels)
@@ -86,7 +88,7 @@ class FRAN(pl.LightningModule):
 
 
       # Display images every 500 steps     
-      if self.my_step % 500 == 0:
+      if self.global_step % 10000 == 0:
 
         # Define the output directory
         output_dir = os.path.join(self.logger.log_dir, "output_images")
@@ -101,6 +103,27 @@ class FRAN(pl.LightningModule):
         tar_diff_img = (((torch.abs(normalized_target_image[0].cpu() - normalized_input_image[0].cpu())).permute(1, 2, 0).numpy() + 1) * 127.5).astype('uint8')
         pred_diff_img = (((torch.abs(model_output[0].cpu())).permute(1, 2, 0).numpy() + 1) * 127.5).astype('uint8')
 
+
+        print(f"D_real min: {real_loss.min().item()}, max: {real_loss.max().item()}")
+        print(f"D_fake min: {fake_loss.min().item()}, max: {fake_loss.max().item()}")
+
+        print(f"Input min: {inputs.min().item()}, max: {inputs.max().item()}")
+        print(f"Output min: {outputs.min().item()}, max: {outputs.max().item()}")
+        print(f"Normalized Input min: {normalized_input_image.min().item()}, max: {normalized_input_image.max().item()}")
+        print(f"Normalized Target min: {normalized_target_image.min().item()}, max: {normalized_target_image.max().item()}")
+        print(f"Predicted Image min: {predicted_images.min().item()}, max: {predicted_images.max().item()}")
+
+        print(f"Step {self.global_step}: D Loss: {d_loss.item()}, G Loss: {total_loss.item()}")
+        print(f"L1 Loss: {l1_loss_value.item()}, Perceptual Loss: {perceptual_loss_value.item()}, Adv Loss: {adversarial_loss_value.item()}")
+
+        if torch.isnan(outputs).any():
+            print("NaN detected in Generator output!")
+        if torch.isnan(predicted_images).any():
+            print("NaN detected in predicted images!")
+        if torch.isnan(d_loss).any() or torch.isnan(total_loss).any():
+            print("NaN detected in loss values!")
+
+          
         plt.figure(figsize=(10, 5))
         plt.subplot(1, 5, 1)
         plt.imshow(input_img)
@@ -112,10 +135,14 @@ class FRAN(pl.LightningModule):
         plt.title("Target Image")
         plt.axis('off')
 
+        print(f"Target Image min: {target_img.min().item()}, max: {target_img.max().item()}")
+
         plt.subplot(1, 5, 3)
         plt.imshow(output_img)
         plt.title(f"Output Image, Age: {int(sample_image[4][0][0]*100)}")
         plt.axis('off')
+
+        print(f"Output Image min: {output_img.min().item()}, max: {output_img.max().item()}")
 
         plt.subplot(1, 5, 4)
         plt.imshow(tar_diff_img)
@@ -128,7 +155,7 @@ class FRAN(pl.LightningModule):
         plt.axis('off')
 
         # Define the output directory
-        output_step_dir = os.path.join(output_dir, f"step_{self.my_step}")
+        output_step_dir = os.path.join(output_dir, f"step_{self.global_step}")
         os.makedirs(output_step_dir, exist_ok=True)
 
         # Save individual images
@@ -139,10 +166,8 @@ class FRAN(pl.LightningModule):
         plt.imsave(os.path.join(output_step_dir, "pred_diff.png"), pred_diff_img)
 
         # Save the full figure
-        plt.savefig(os.path.join(output_step_dir, f"comparison_{self.my_step}.png"), bbox_inches='tight')
+        plt.savefig(os.path.join(output_step_dir, f"comparison_{self.global_step}.png"), bbox_inches='tight')
         plt.close()
-
-      self.my_step +=1
 
   def configure_optimizers(self):
     generator_optimizer = optim.Adam(self.generator.parameters(), lr=0.0001)
