@@ -8,13 +8,15 @@ import torch.nn as nn
 import cv2 as cv
 import os
 import gc
+from torchvision.models import VGG16_Weights
+from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Basic losses
 adversarial_loss = BCEWithLogitsLoss()
 l1_loss = nn.L1Loss()
-perceptual_loss = LPIPS().to(device)
+perceptual_loss = LearnedPerceptualImagePatchSimilarity(net_type='vgg').to(device)
 
 # Default loss weights
 lambda_l1 = 1
@@ -88,7 +90,7 @@ class FRAN(pl.LightningModule):
 
 
       # Display images every 500 steps     
-      if self.global_step % 10000 == 0:
+      if self.global_step % 500 == 0:
 
         # Define the output directory
         output_dir = os.path.join(self.logger.log_dir, "output_images")
