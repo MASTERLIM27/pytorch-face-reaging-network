@@ -7,7 +7,7 @@ import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
 from datasets.augmentations import transform_normalize
-from models.descriminator import PatchGANDiscriminator
+from models.discriminator import PatchGANDiscriminator
 from models.generator import Generator
 from datasets.fran_dataset import FRANDataset
 from training.trainer import FRAN

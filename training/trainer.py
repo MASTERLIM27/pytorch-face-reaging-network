@@ -35,6 +35,12 @@ class FRAN(pl.LightningModule):
       with torch.no_grad():
         model_output = self.generator(x)
       return model_output
+  
+  def check_nan_inf(self, tensor, name):
+        if torch.isnan(tensor).any():
+            print(f"NaN detected in {name}!")
+        if torch.isinf(tensor).any():
+            print(f"Inf detected in {name}!")
 
   def training_step(self, batch, batch_idx):
       opt_g, opt_d = self.optimizers()
@@ -88,6 +94,11 @@ class FRAN(pl.LightningModule):
       self.log('perceptual_loss', perceptual_loss_value.mean()*lambda_perceptual, prog_bar=True)
       self.log('l1_loss', l1_loss_value*lambda_l1, prog_bar=True)
 
+      # Debug checks
+      self.check_nan_inf(outputs, "Generator Output")
+      self.check_nan_inf(predicted_images, "Predicted Images")
+      self.check_nan_inf(d_loss, "Discriminator Loss")
+      self.check_nan_inf(total_loss, "Total Loss")
 
       # Display images every 500 steps     
       if self.global_step % 500 == 0:
@@ -124,7 +135,6 @@ class FRAN(pl.LightningModule):
             print("NaN detected in predicted images!")
         if torch.isnan(d_loss).any() or torch.isnan(total_loss).any():
             print("NaN detected in loss values!")
-
           
         plt.figure(figsize=(10, 5))
         plt.subplot(1, 5, 1)
