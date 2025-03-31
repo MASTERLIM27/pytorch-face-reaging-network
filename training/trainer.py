@@ -19,9 +19,9 @@ l1_loss = nn.L1Loss()
 perceptual_loss = LearnedPerceptualImagePatchSimilarity(net_type='vgg').to(device)
 
 # Default loss weights
-lambda_l1 = 1
-lambda_perceptual = 1
-lambda_adversarial = 0.05
+lambda_l1 = 0.5
+lambda_perceptual = 0.5
+lambda_adversarial = 0.025
 
 # Basic pl lightning module for checkpointing and logging
 class FRAN(pl.LightningModule):
@@ -56,11 +56,12 @@ class FRAN(pl.LightningModule):
       normalized_target_image = batch['normalized_target_image'].to(self.device)
 
       target_age = batch['target_age'].to(self.device)
+
       # Forward pass
       outputs = self.generator(inputs)
       outputs = torch.clamp(outputs, -1, 1)
 
-      predicted_images = normalized_input_image+outputs
+      predicted_images = normalized_input_image + outputs
       predicted_images = torch.clamp(predicted_images, -1, 1)
       predicted_images_with_age = torch.cat((predicted_images, target_age), dim=1)
 
@@ -112,7 +113,7 @@ class FRAN(pl.LightningModule):
         # Convert images to NumPy format for saving
         input_img = ((normalized_input_image[0].cpu().permute(1, 2, 0).numpy() + 1) * 127.5).astype('uint8')
         target_img = ((normalized_target_image[0].cpu().permute(1, 2, 0).numpy() + 1) * 127.5).astype('uint8')
-        output_img = (((normalized_input_image[0].cpu() + model_output[0].cpu()).permute(1, 2, 0).numpy() + 1) * 127.5).astype('uint8')
+        output_img = (((normalized_input_image[0].cpu() + model_output[0].cpu()).permute(1, 2, 0).numpy() + 1) * 127.5).clip(0, 255).astype('uint8')
         tar_diff_img = (((torch.abs(normalized_target_image[0].cpu() - normalized_input_image[0].cpu())).permute(1, 2, 0).numpy() + 1) * 127.5).astype('uint8')
         pred_diff_img = (((torch.abs(model_output[0].cpu())).permute(1, 2, 0).numpy() + 1) * 127.5).astype('uint8')
 
