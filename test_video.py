@@ -17,7 +17,7 @@ def load_model_from_checkpoint(checkpoint_path, generator):
     return model.generator
 
 generator_model = load_model_from_checkpoint(
-    checkpoint_path="./logs/model/version_23/model_checkpoints/last.ckpt",
+    checkpoint_path="./logs/model/version_24/model_checkpoints/last.ckpt",
     generator=Generator()
 ).to(device)
 
@@ -78,4 +78,4 @@ def process_video(input_video_path, output_video_path, input_age, output_age):
     print("Processing complete. Output saved at", output_video_path)
 
 
-process_video("./example-images/video_full.mp4", "./example-images/output_full_23_age_50_80.mp4", 50, 80)
+process_video("./example-images/video_4.mp4", "./example-images/output_24_age_50_20.mp4", 50, 20)

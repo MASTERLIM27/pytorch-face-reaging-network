@@ -5,6 +5,7 @@ from PIL import Image
 import numpy as np
 import albumentations as A
 from itertools import permutations
+from datasets.augmentations import transform_no_crop
 
 TARGET_AGES = [18,23,28,33,38,43,48,53,58,63,68,73,78,83]
 
@@ -48,13 +49,30 @@ class FRANDataset(Dataset):
         input_image = np.array(Image.open(self.data_dir/image_pair[0]).convert('RGB'))
         target_image = np.array(Image.open(self.data_dir/image_pair[1]).convert('RGB'))
 
+        # Augmentations
         normalized_input_image_transformed = self.transforms(image=input_image)
+        normalized_input_aug_1_image_transformed = transform_no_crop(image=input_image)
+
+        # Extract the numpy first
+        aug_1_img_tensor = normalized_input_aug_1_image_transformed["image"]
+        aug_1_img_np = aug_1_img_tensor.permute(1, 2, 0).cpu().numpy()
+        normalized_input_aug_2_image_transformed = transform_no_crop(image=aug_1_img_np)
+        aug_2_img_tensor = normalized_input_aug_2_image_transformed["image"]
+        
         # Basic normalization
         normalized_input_image = normalized_input_image_transformed['image']/127.5 - 1
+        normalized_input_aug_1_image = normalized_input_aug_1_image_transformed['image']/127.5 - 1
+        normalized_input_aug_2_image = normalized_input_aug_2_image_transformed['image']/127.5 - 1
 
         # Replay augmentations on second image
         normalized_target_image = A.ReplayCompose.replay(
             normalized_input_image_transformed['replay'], 
+            image=np.array(target_image),
+            )['image']/127.5 - 1
+        
+        # Replay augmentations on the augmented image
+        normalized_target__aug_image = A.ReplayCompose.replay(
+            normalized_input_aug_1_image_transformed['replay'], 
             image=np.array(target_image),
             )['image']/127.5 - 1
 
@@ -65,10 +83,17 @@ class FRANDataset(Dataset):
 
         # Combine RGB delta diff with age maps for 5-channel tensor
         input_tensor = torch.cat((normalized_input_image, age_map1, age_map2), dim=0)
+        input_aug_1_tensor = torch.cat((normalized_input_aug_1_image, age_map1, age_map2), dim=0)
+        input_aug_2_tensor = torch.cat((normalized_input_aug_2_image, age_map1, age_map2), dim=0)
 
         return {
             'input': input_tensor,
+            'input_aug_1': input_aug_1_tensor,
+            'input_aug_2': input_aug_2_tensor,
             'normalized_input_image': normalized_input_image,
+            'normalized_input_aug_1_image': normalized_input_aug_1_image,
+            'normalized_input_aug_2_image': normalized_input_aug_2_image,
             'normalized_target_image': normalized_target_image,
+            'normalized_target__aug_image': normalized_target__aug_image,
             'target_age': age_map2,
         }

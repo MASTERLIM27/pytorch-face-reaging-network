@@ -29,7 +29,7 @@ if __name__ == '__main__':
     image_meta = image_meta.drop(columns=['Unnamed: 0'])
 
     train_dataset = FRANDataset(image_meta, transform_normalize, args.data_dir / "synthetic_images")
-    dataloader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=2)
+    dataloader = DataLoader(train_dataset, batch_size=8, shuffle=True, num_workers=16)
     logger = TensorBoardLogger("logs", name="model")
     csv_logger = CSVLogger(save_dir="logs", name="loss")
 
