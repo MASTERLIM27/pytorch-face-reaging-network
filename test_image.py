@@ -33,7 +33,7 @@ transform_resize = A.Compose([
 # fran-step=810000.ckpt
 # Load the trained generator model
 generator_model = load_model_from_checkpoint(
-    checkpoint_path="./logs/model/version_23/model_checkpoints/last.ckpt",
+    checkpoint_path="./logs/model/version_24/model_checkpoints/last.ckpt",
     generator=Generator(),
 ).to(device)
 # generator_model.eval()
@@ -85,4 +85,4 @@ def process_and_show_image(image_path, input_age, output_age):
 
 # example-images/input_example_img.png
 # example-images/18_seed0002.png
-process_and_show_image("/home/andre/fran/example-images/my.jpg", 20, 83)
+process_and_show_image("/home/andre/fran/example-images/soe.png", 20, 83)
